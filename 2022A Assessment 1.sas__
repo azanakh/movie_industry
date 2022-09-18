@@ -1,0 +1,274 @@
+/* 
+	Data processing using SAS 
+	Assessment 1
+	Autumn 2022
+	
+	Name:Azana Khan
+	Student number: 14106710
+	
+*/
+
+/*
+  Q1
+
+  Create a SAS library reference "practice" that refers to "Datasets - Practice" in your personal folder.
+
+  Import the Instagram influencer data into a SAS dataset called insta in your practice library. 
+
+  Import the power plant data into a SAS dataset called power in your practice library.
+
+  Import the NFT sales data into a SAS dataset called nft in your practice library. 
+
+  Ensure that column names of all imported files are valid SAS7 names.
+*/
+
+libname  practice "/home/u61015226/Azana/DP using SAS/datasets/Datasets - Practice";
+
+option validvarname =v7;
+proc import datafile="/home/u61015226/Azana/DP using SAS/datasets/A1_SAS/instagram_global_top_1000.csv"
+	dbms= csv
+	out= practice.insta
+	replace;
+run;
+
+proc import datafile="/home/u61015226/Azana/DP using SAS/datasets/A1_SAS/global_power_plants.csv"
+	dbms= csv
+	out= practice.power
+	replace;
+run;
+
+proc import datafile="/home/u61015226/Azana/DP using SAS/datasets/A1_SAS/nft_sales.xlsx"
+	dbms= xlsx
+	out= practice.nft
+	replace;
+run;
+/* 
+  Q2
+
+  Explore the Instagram data that you imported into practice.insta.
+  [2.1] Show that the Scraped column has been imported as a SAS datetime with format DATETIME.
+
+  Generate frequency tables for the country and audience_country variables.
+  Show that there is only 1 distinct value of country.
+  Show that 143 influencers (14.4%) have an audience in India.
+
+  Create a temporary dataset named india from the Instagram table.
+  The table india should only include rows for which audience_country is equal to India.
+  Do not include country or scraped in the output table.
+  [2.2] Show (in your results) that your dataset contains data for 143 influencers. 
+
+  Print the top 5 influencers with an Indian audience.
+  [2.3] Show that the top influencer in India is Cristiano Ronaldo. 
+*/
+
+title the Scraped column has been imported as a SAS datetime with format DATETIME;
+proc contents data= practice.insta;
+run;
+
+
+proc freq data=practice.insta;
+	tables country audience_country;
+run;
+
+title There is only 1 distinct value of country;
+proc freq data=practice.insta;
+	tables country;
+run;
+
+title Show 143 influencers (14.4%) have an audience in India;
+proc freq data=practice.insta;
+	tables audience_country;
+
+run;
+
+data india;
+	set practice.insta;
+	where audience_country='India';
+	drop country scraped;
+run;
+
+title Dataset contains data for 143 influencers ;
+proc contents data=india;
+run;
+
+title the top influencer in India is Cristiano Ronaldo;
+proc print data=india(obs=5);
+run;
+
+
+/* 
+  Q3
+ 
+  Generate a frequency table from the Instagram data,
+  of the Category variable,
+  for rows where Category contains Music.
+  [3.1] Show that 10 influencers are in both the Music and Lifestyle categories.
+ 
+  Create a temporary dataset called music from the spotify table, 
+  containing rows where Category contains Music.
+  Calculate the average Rank and Followers for this table.
+  [3.2] Show that the average rank is 465 and average followers around 28,595,000.
+*/
+
+proc freq data=practice.insta;
+	tables category;
+	where Category='Music';
+	
+run;
+
+title 10 influencers are in both the Music and Lifestyle categories;
+proc print data=practice.insta;
+	var account category;
+	where Category='Music|Lifestyle';
+	
+run;
+
+data music;
+	set practice.insta;
+	where Category contains 'Music';
+run;
+
+title The average rank is 465 and average followers around 28,595,000;
+proc means data= music;
+	var rank followers;
+run;
+
+
+
+/* 
+  Q4
+
+  Using the power plant data,
+  produce detailed summary statistics of the estimated generation capacity in 2020 [estimated_generation_gwh_2020],
+  for Australian power plants
+  [4.1] Show that there are 25 missing values.
+
+  Make a new temporary dataset auspower,
+  containing Australian power plants,
+  removing any plants where estimated generation capacity in 2020 is missing,
+  and drop the start date, country, and country code variables.
+  Re-run detailed summary statistics on this data.
+  [4.2] Show that the median generation capacity is 111 GWh.
+
+  From your auspower dataset, 
+  calculate the average capacity in MW and average estimated generation capacity in 2020,
+  for each kind of primary fuel.
+  [4.3] Show that the average capacity of Australian solar installations was 60.3 MW.
+*/
+
+title Detailed summary statistics;
+proc univariate data=practice.power;
+	var estimated_generation_gwh_2020;
+	where country = 'Australia';
+run;
+
+
+data auspower;
+	set practice.power;
+	where country='Australia'and estimated_generation_gwh_2020 is not missing;
+	drop start_date country country_code;
+
+run;
+
+title The median generation capacity is 111 GWh;
+proc univariate data= auspower;
+	var estimated_generation_gwh_2020;
+run;
+
+title  the average capacity of Australian solar installations was 60.3 MW;
+%let fuel_type= Solar;
+/*Change the fuel_type according to needed primary fuel*/
+proc means data=auspower;
+where primary_fuel= "&fuel_type";
+	var capacity_in_MW estimated_generation_gwh_2020;
+run;
+
+/* 
+  Q5
+
+  Print 10 rows of the NFT data,
+  applying a temporary format to sales to display it in dollars.
+  [5.1] Show that the total sales for Axie Infinity is $3,328,148,500.
+  
+  Create a new temporary dataset named nft_groups from the NFT data,
+  applying a permanent format to sales to display it in dollars.
+  
+  Make a new variable `avg_txn_value` in nft_groups to show the average transaction value
+  (the total sales divided by the number of transactions),
+  also formatted as dollars.
+  
+  Make a new variable `group` in nft_groups, such that:
+  if the collection name contains 'Ape' then group is 'Apes'
+  else if the collection name contains 'Cat' then group is 'Cats'
+  else if the collection name contains 'Punk' then group is 'Punks'
+  otherwise, the group is 'Other',
+  using case-insensitive matching.
+  
+  [5.2] Show that 12 NFTs (4.8%) are in the Cats group
+  [5.3] Show that the average transaction value for Mooncats is $3,002.
+  
+  Sort your nft_groups dataset by average transaction value
+  into a new dataset nft_txn_value.
+  [5.4] Show that the Deafbeef NFT has the highest average transaction value.
+  
+  Define a macro variable analysis_group.
+  Use your macro variable to:
+  * Print the top 10 NFTs in the Apes group, according to average transaction value.
+  * Put a title on your output: "Top Apes NFTs by average transaction size"
+  Repeat this analysis for the Punks group by changing the value of analysis_group.
+  [5.5] Show that CryptoPunks has the highest average transaction value in the Punks group.
+*/
+
+title the total sales for Axie Infinity is $3,328,148,500;
+proc print data=practice.nft(obs=10);
+	format sales DOLLAR15.;
+run;
+
+data nft_groups;
+	set practice.nft;
+	format sales DOLLAR15.;
+	avg_txn_value= sum(sales)/txns;
+	format avg_txn_value DOLLAR10.;
+	length group $ 15;
+	collections= UPCASE(collections);
+	if find(collections,'Ape','i') then group='Apes';
+	else if find(collections,'Cat','i') then group='Cats';
+	else if find(collections,'Punk','i') then group='Punks';
+	else group='Other';	
+run;
+
+title 12 NFTs (4.8%) are in the Cats group;
+proc freq data=nft_groups;
+	tables group;
+run;
+
+title The average transaction value for Mooncats is $3,002;
+proc print data=nft_groups;
+	where collections="MOONCATS";
+	var collections avg_txn_value;
+run;
+
+proc sort data=nft_groups
+	out=nft_txn_value;
+	by descending avg_txn_value;
+run;
+
+title The Deafbeef NFT has the highest average transaction value;
+proc print data=nft_txn_value(obs=10);
+run;
+
+
+%let analysis_group= Punks;
+/*Changed the name from Apes to Punks*/
+title Top &analysis_group NFTs by average transaction size; 
+proc print data=nft_txn_value(obs=10);
+	where group="&analysis_group";
+run;
+
+title CryptoPunks has the highest average transaction value in the Punks group;
+proc print data=nft_txn_value(obs=10);
+	where group="Punks";
+run;
+
+
+/* ends */
